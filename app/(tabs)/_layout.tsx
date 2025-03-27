@@ -71,6 +71,13 @@ const TabsLayout = () => {
           )
         }}
         />
+        <Tabs.Screen name="details/[id]"
+        options={{
+          href: null,
+          headerShown: false,
+        }}
+        />
+
     </Tabs>
   );
 }
