@@ -26,8 +26,7 @@ const TabsLayout = () => {
       tabBarInactiveTintColor: '#F5F5DC',
       tabBarStyle: {
         backgroundColor: '#000',
-        borderTopColor: 'rgba(100,100,100,0.2)',
-        borderTopWidth: 1,
+        borderTopWidth: 0,
         height: Platform.OS === 'ios' ? 83 : 66
       },
       tabBarLabelStyle: {
