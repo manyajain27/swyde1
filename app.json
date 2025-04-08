@@ -39,6 +39,31 @@
           "backgroundColor": "#ffffff"
         }
       ],
+      [
+        "expo-font",
+        {
+          "fonts": [
+        "../assets/fonts/SignikaNegative-Bold.ttf",
+        "../assets/fonts/SignikaNegative-Light.ttf",
+        "../assets/fonts/SignikaNegative-Medium.ttf",
+        "../assets/fonts/SignikaNegative-Regular.ttf",
+        "../assets/fonts/SignikaNegative-SemiBold.ttf",
+        "../assets/fonts/Poppins-Medium.ttf",
+        "../assets/fonts/Urbanist-Medium.ttf",
+        "../assets/fonts/OpenSans/OpenSans-Medium.ttf",
+        "../assets/fonts/OpenSans/OpenSans-Regular.ttf",
+        "../assets/fonts/OpenSans/OpenSans-SemiBold.ttf",
+        "../assets/fonts/OpenSans/OpenSans-Bold.ttf",
+        "../assets/fonts/OpenSans/OpenSans-Light.ttf",
+        "../assets/fonts/OpenSans/OpenSans_Condensed-Medium.ttf",
+        "../assets/fonts/MuseoSansRounded300.otf",
+        "../assets/fonts/MuseoSansRounded500.otf",
+        "../assets/fonts/MuseoSansRounded700.otf",
+        "../assets/fonts/MuseoSansRounded900.otf",
+        "../assets/fonts/MuseoSansRounded1000.otf",
+      ]
+        }
+      ],
       "expo-apple-authentication",
       "expo-secure-store"
     ],
