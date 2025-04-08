@@ -1,5 +1,13 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, Dimensions, Platform, ActivityIndicator, Animated } from 'react-native';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Dimensions,
+  Platform,
+  ActivityIndicator,
+  Animated,
+} from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { s, vs, ms } from 'react-native-size-matters';
@@ -8,6 +16,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import LottieView from 'lottie-react-native';
+import throttle from 'lodash.throttle';
 
 const { width, height } = Dimensions.get('window');
 
@@ -29,54 +38,135 @@ const SwiperCard: React.FC<SwiperCardProps> = ({ onAllCardsSwiped }) => {
   const [loading, setLoading] = useState(true);
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [allSwiped, setAllSwiped] = useState(false);
-  const [isSwiping, setIsSwiping] = useState(false);
   const router = useRouter();
   const swiperRef = useRef<Swiper<Place>>(null);
-  const swipeAnim = useRef(new Animated.Value(0)).current;
   const animationRef = useRef<LottieView>(null);
+
+  const swipeAnim = useRef(new Animated.Value(0)).current;
+  const leftGlowOpacity = useRef(new Animated.Value(0)).current;
+  const rightGlowOpacity = useRef(new Animated.Value(0)).current;
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const overlayColor = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const fetchPlaces = async () => {
-      const { data, error } = await supabase.from('places').select(
-        'id,name,address,rating,price_range,image_url'
-      );
-      if (error) {
-        console.error('Error fetching places:', error.message);
-      } else {
+      try {
+        const { data, error } = await supabase
+          .from('places')
+          .select('id,name,address,rating,price_range,image_url')
+
+        if (error) throw error;
         setPlaces(data || []);
+      } catch (error) {
+        console.error('Error fetching places:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
+
     fetchPlaces();
   }, []);
 
   useEffect(() => {
     if (places.length > 0) {
-      const timer = setTimeout(() => {
-        places.forEach(place => {
-          Image.prefetch(place.image_url).catch(() => {});
-        });
-      }, 200);
+      const prefetchImages = async () => {
+        await Promise.all(
+          places.slice(0, 4).map((place) =>
+            Image.prefetch(place.image_url).catch(() => {})
+          )
+        );
+      };
+      const timer = setTimeout(prefetchImages, 200);
       return () => clearTimeout(timer);
     }
   }, [places]);
 
-  const renderRatingStars = (rating: number) => {
+  const updateSwipeEffects = useCallback(
+    throttle((value: number) => {
+      const threshold = width * 0.02;
+      const maxValue = width * 0.8;
+
+      if (value < -threshold) {
+        const opacity = Math.min(Math.abs(value + threshold) / maxValue, 1);
+        leftGlowOpacity.setValue(opacity);
+        rightGlowOpacity.setValue(0);
+        overlayOpacity.setValue(opacity);
+        overlayColor.setValue(-1);
+      } else if (value > threshold) {
+        const opacity = Math.min((value - threshold) / maxValue, 1);
+        rightGlowOpacity.setValue(opacity);
+        leftGlowOpacity.setValue(0);
+        overlayOpacity.setValue(opacity);
+        overlayColor.setValue(1);
+      } else {
+        leftGlowOpacity.setValue(0);
+        rightGlowOpacity.setValue(0);
+        overlayOpacity.setValue(0);
+        overlayColor.setValue(0);
+      }
+    }, 16),
+    []
+  );
+
+  useEffect(() => {
+    const listenerId = swipeAnim.addListener(({ value }) => {
+      updateSwipeEffects(value);
+    });
+    return () => swipeAnim.removeListener(listenerId);
+  }, [updateSwipeEffects]);
+
+  const resetAnimations = useCallback(() => {
+    swipeAnim.setValue(0);
+    leftGlowOpacity.setValue(0);
+    rightGlowOpacity.setValue(0);
+    overlayOpacity.setValue(0);
+    overlayColor.setValue(0);
+  }, []);
+
+  const renderRatingStars = useCallback((rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Text
-        key={i}
+        key={`star-${i}`}
         style={[styles.starIcon, { color: i < rating ? '#FFD700' : '#E0E0E0' }]}
       >
         ★
       </Text>
     ));
-  };
+  }, []);
 
-  const renderCard = (card: Place, index: number) => {
-    const isActiveCard = index === activeCardIndex;
+  const handleAllSwiped = useCallback(() => {
+    setAllSwiped(true);
+    onAllCardsSwiped?.();
+  }, [onAllCardsSwiped]);
 
+  const EmptyState = useMemo(
+    () => (
+      <View style={styles.emptyContainer}>
+        <LottieView
+          ref={animationRef}
+          autoPlay
+          loop
+          style={styles.lottieAnimation}
+          source={require('@/assets/emptyAnimation.json')}
+        />
+        <Text style={styles.emptyText}>No more places to swipe!</Text>
+        <Text style={styles.emptySubText}>Check back later for new places</Text>
+      </View>
+    ),
+    []
+  );
+
+  const renderCard = useCallback((card: Place, index: number) => {
+    const isActive = index === activeCardIndex;
+  
+    const interpolatedOverlayColor = overlayColor.interpolate({
+      inputRange: [-1, 0, 1],
+      outputRange: ['rgba(255,0,0,0.4)', 'transparent', 'rgba(0,255,0,0.4)'],
+      extrapolate: 'clamp',
+    });
+  
     return (
-      <View style={styles.cardWrapper} key={card.id}>
+      <View style={styles.cardWrapper} key={`card-${card.id}`}>
         <View style={styles.card}>
           <View style={styles.imageContainer}>
             <Image
@@ -84,29 +174,30 @@ const SwiperCard: React.FC<SwiperCardProps> = ({ onAllCardsSwiped }) => {
               style={styles.image}
               contentFit="cover"
               transition={300}
+              placeholder={require('@/assets/images/placeholder.png')}
+              recyclingKey={`img-${card.id}`}
+              cachePolicy="memory-disk"
             />
             <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.7)']}
+              colors={['transparent', 'rgba(0,0,0,0.2)']}
               style={styles.imageGradient}
             />
-
-            {isActiveCard && isSwiping && (
+  
+            {/* Card overlay shown only for active card */}
+            {isActive && (
               <Animated.View
                 style={[
                   styles.overlay,
                   {
-                    backgroundColor: swipeAnim.interpolate({
-                      inputRange: [-width/2, 0, width/2],
-                      outputRange: ['rgba(255,0,0,0.4)', 'transparent', 'rgba(0,255,0,0.4)'],
-                      extrapolate: 'clamp',
-                    }),
+                    backgroundColor: interpolatedOverlayColor,
+                    opacity: overlayOpacity,
                   },
                 ]}
               />
             )}
           </View>
-
-          <BlurView intensity={50} style={styles.detailsContainer}>
+  
+          <BlurView intensity={30} style={styles.detailsContainer}>
             <Text style={styles.cardTitle} numberOfLines={1}>
               {card.name}
             </Text>
@@ -124,65 +215,59 @@ const SwiperCard: React.FC<SwiperCardProps> = ({ onAllCardsSwiped }) => {
         </View>
       </View>
     );
-  };
-
-  const handleAllSwiped = () => {
-    console.log('All cards swiped');
-    setAllSwiped(true);
-    onAllCardsSwiped?.();
-  };
+  }, [activeCardIndex, overlayColor, overlayOpacity, renderRatingStars]);
+  
 
   if (loading) {
-    return <ActivityIndicator size="large" color="#5956E9" />;
+    return <ActivityIndicator size="large" color="#5956E9" style={styles.loader} />;
   }
 
   if (allSwiped || places.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <LottieView
-          ref={animationRef}
-          autoPlay
-          loop
-          style={styles.lottieAnimation}
-          source={require('@/assets/emptyAnimation.json')}
-        />
-        <Text style={styles.emptyText}>No more places to swipe!</Text>
-        <Text style={styles.emptySubText}>Check back later for new places</Text>
-      </View>
-    );
+    return EmptyState;
   }
 
   return (
     <View style={styles.swiperContainer}>
+      {/* Overlay & Glows */}
+      <Animated.View
+        style={[
+          styles.sideGlow,
+          styles.leftGlow,
+          { opacity: leftGlowOpacity },
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.sideGlow,
+          styles.rightGlow,
+          { opacity: rightGlowOpacity },
+        ]}
+      />
+
+      {/* Swiper */}
       <Swiper
         ref={swiperRef}
         cards={places}
         renderCard={renderCard}
-        onSwiped={() => setActiveCardIndex(i => i + 1)}
-        onSwipedRight={(i) => {
-          console.log('Liked:', places[i]?.name);
-          setIsSwiping(false);
+        onSwiped={(i) => {
+          setActiveCardIndex(i + 1);
+          resetAnimations();
         }}
-        onSwipedLeft={(i) => {
-          console.log('Disliked:', places[i]?.name);
-          setIsSwiping(false);
-        }}
-        onSwiping={(x) => {
-          swipeAnim.setValue(x);
-          setIsSwiping(true);
-        }}
-        onSwipedAborted={() => setIsSwiping(false)}
+        onSwipedRight={(i) => console.log('Liked:', places[i]?.name)}
+        onSwipedLeft={(i) => console.log('Disliked:', places[i]?.name)}
+        onSwiping={(x) => swipeAnim.setValue(x)}
+        onSwipedAborted={resetAnimations}
         onSwipedAll={handleAllSwiped}
         verticalSwipe={false}
         animateCardOpacity={false}
-        stackAnimationFriction={45} //dont change (dont remove this comment)
-        stackAnimationTension={90} //dont change (dont remove this comment)
-        horizontalThreshold={width / 10} //dont change (dont remove this comment)
+        stackAnimationFriction={45} //DO NOT CHANGE (dont remove this comment)
+        stackAnimationTension={90} //DO NOT CHANGE (dont remove this comment)
+        horizontalThreshold={width / 10} //DO NOT CHANGE (dont remove this comment)
         backgroundColor="transparent"
-        stackSize={4} //dont change (dont remove this comment)
-        stackSeparation={10} //dont change (dont remove this comment)
-        swipeAnimationDuration={140} //dont change (dont remove this comment)
-        onTapCard={i => router.push(`/details/${places[i]?.id}`)}
+        stackSize={4} //DO NOT CHANGE (dont remove this comment)
+        stackSeparation={10} //DO NOT CHANGE (dont remove this comment)
+        swipeAnimationDuration={140} //DO NOT CHANGE (dont remove this comment)
+        onTapCard={(i) => router.push(`/details/${places[i]?.id}`)}
       />
     </View>
   );
@@ -192,6 +277,12 @@ const styles = StyleSheet.create({
   swiperContainer: {
     flex: 1,
     width: '100%',
+    position: 'relative',
+  },
+  loader: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   cardWrapper: {
     alignItems: 'center',
@@ -204,13 +295,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#1a1a1a',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
-    elevation: 15
+    elevation: 15,
   },
   imageContainer: {
     width: '100%',
@@ -236,6 +324,30 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 1,
   },
+  sideGlow: {
+    position: 'absolute',
+    top: height * 0.1,
+    width: width * 0.3,
+    height: height * 0.6,
+    zIndex: 5,
+    borderRadius: ms(20),
+  },
+  leftGlow: {
+    left: 0,
+    shadowColor: '#FF0000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
+    elevation: 25,
+  },
+  rightGlow: {
+    right: 0,
+    shadowColor: '#00FF00',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
+    elevation: 25,
+  },
   detailsContainer: {
     position: 'absolute',
     bottom: 0,
@@ -243,6 +355,7 @@ const styles = StyleSheet.create({
     right: 0,
     paddingVertical: vs(10),
     paddingHorizontal: s(15),
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   cardTitle: {
     fontSize: Platform.select({ ios: ms(22), android: ms(18) }),
