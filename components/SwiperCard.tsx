@@ -29,7 +29,7 @@ const SwiperCard: React.FC<SwiperCardProps> = ({ onAllCardsSwiped }) => {
   const [loading, setLoading] = useState(true);
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [allSwiped, setAllSwiped] = useState(false);
-
+  const [isSwiping, setIsSwiping] = useState(false);
   const router = useRouter();
   const swiperRef = useRef<Swiper<Place>>(null);
   const swipeAnim = useRef(new Animated.Value(0)).current;
@@ -61,7 +61,6 @@ const SwiperCard: React.FC<SwiperCardProps> = ({ onAllCardsSwiped }) => {
     }
   }, [places]);
 
-
   const renderRatingStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Text
@@ -73,8 +72,10 @@ const SwiperCard: React.FC<SwiperCardProps> = ({ onAllCardsSwiped }) => {
     ));
   };
 
-  const renderCard = useMemo(
-    () => (card: Place, index: number) => (
+  const renderCard = (card: Place, index: number) => {
+    const isActiveCard = index === activeCardIndex;
+
+    return (
       <View style={styles.cardWrapper} key={card.id}>
         <View style={styles.card}>
           <View style={styles.imageContainer}>
@@ -88,6 +89,21 @@ const SwiperCard: React.FC<SwiperCardProps> = ({ onAllCardsSwiped }) => {
               colors={['transparent', 'rgba(0,0,0,0.7)']}
               style={styles.imageGradient}
             />
+
+            {isActiveCard && isSwiping && (
+              <Animated.View
+                style={[
+                  styles.overlay,
+                  {
+                    backgroundColor: swipeAnim.interpolate({
+                      inputRange: [-width/2, 0, width/2],
+                      outputRange: ['rgba(255,0,0,0.4)', 'transparent', 'rgba(0,255,0,0.4)'],
+                      extrapolate: 'clamp',
+                    }),
+                  },
+                ]}
+              />
+            )}
           </View>
 
           <BlurView intensity={50} style={styles.detailsContainer}>
@@ -107,9 +123,8 @@ const SwiperCard: React.FC<SwiperCardProps> = ({ onAllCardsSwiped }) => {
           </BlurView>
         </View>
       </View>
-    ),
-    [activeCardIndex]
-  );
+    );
+  };
 
   const handleAllSwiped = () => {
     console.log('All cards swiped');
@@ -144,9 +159,19 @@ const SwiperCard: React.FC<SwiperCardProps> = ({ onAllCardsSwiped }) => {
         cards={places}
         renderCard={renderCard}
         onSwiped={() => setActiveCardIndex(i => i + 1)}
-        onSwipedRight={i => console.log('Liked:', places[i]?.name)}
-        onSwipedLeft={i => console.log('Disliked:', places[i]?.name)}
-        onSwiping={x => swipeAnim.setValue(x)}
+        onSwipedRight={(i) => {
+          console.log('Liked:', places[i]?.name);
+          setIsSwiping(false);
+        }}
+        onSwipedLeft={(i) => {
+          console.log('Disliked:', places[i]?.name);
+          setIsSwiping(false);
+        }}
+        onSwiping={(x) => {
+          swipeAnim.setValue(x);
+          setIsSwiping(true);
+        }}
+        onSwipedAborted={() => setIsSwiping(false)}
         onSwipedAll={handleAllSwiped}
         verticalSwipe={false}
         animateCardOpacity={false}
@@ -202,6 +227,14 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: '50%',
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
   },
   detailsContainer: {
     position: 'absolute',
