@@ -1,7 +1,7 @@
 // HomeHeader.tsx
 import { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, SafeAreaView } from "react-native";
-import { Ionicons, FontAwesome } from "@expo/vector-icons";
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, SafeAreaView, Pressable } from "react-native";
+import { Ionicons, FontAwesome, AntDesign } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import Animated, { 
   useAnimatedStyle, 
@@ -14,7 +14,6 @@ import { router } from "expo-router";
 const HomeHeader = ({ scrollY }: { scrollY: Animated.SharedValue<number> }) => {
   const [nameLocation, setNameLocation] = useState<string | null>(null);
   const [districtLocation, setDistrictLocation] = useState<string | null>(null);
-  const [searchFocused, setSearchFocused] = useState(false);
   const [latitude, setLatitude] = useState<number | null>(null);
 const [longitude, setLongitude] = useState<number | null>(null);
 
@@ -80,7 +79,7 @@ const [longitude, setLongitude] = useState<number | null>(null);
           Swyde
         </Animated.Text>
         <TouchableOpacity 
-        style={styles.profileButton} 
+        style={styles.exploreButton} 
         onPress={() => router.push("/(tabs)/explore")}
          >
           <FontAwesome name="search" size={24} color="#F5F5DC" />
@@ -90,9 +89,16 @@ const [longitude, setLongitude] = useState<number | null>(null);
       <View style={styles.locationRow}>
         <Ionicons name="location-outline" size={24} color="#F5F5DC" />
         <View style={styles.locationTextContainer}>
-          <Text style={styles.locationMainText}>
-            {nameLocation || "Locating..."}
-          </Text>
+          <View>
+            <Pressable 
+            style={styles.locationSubRow} 
+            onPress={() => router.push("/location/LocationScreen")}>
+                <Text style={styles.locationMainText}>
+                    {nameLocation || "Locating..."}
+                </Text>
+                <AntDesign name="down" size={14} color="#F5F5DC" />
+            </Pressable>
+          </View>
           <Text style={styles.locationSubText}>
             {districtLocation}
           </Text>
@@ -122,7 +128,7 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
     fontFamily: "MuseoSans-Bold",
   },
-  profileButton: {
+  exploreButton: {
     padding: 5,
   },
   locationRow: {
@@ -131,6 +137,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingTop: 4,
   },
+    locationSubRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 7,
+    },
   locationTextContainer: {
     marginLeft: 5,
     flex: 1,
@@ -145,36 +156,7 @@ const styles = StyleSheet.create({
     color: "#F5F5DC",
     marginTop: 2,
     fontFamily: "MuseoSans-Regular",
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#111111",
-    borderRadius: 25,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: "#222222",
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 10,
-    fontSize: 16,
-    color: "#E5E7EB",
-  },
-  filterButton: {
-    backgroundColor: "#111111",
-    borderRadius: 20,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#222222",
-  },
+  }
 });
 
 export default HomeHeader;

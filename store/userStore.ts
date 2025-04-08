@@ -26,6 +26,7 @@ export const useUserStore = create<UserState>((set) => ({
   signOut: async () => {
     await supabase.auth.signOut();
     router.dismissAll();
+    router.replace('/onboarding/OnboardingIndex');
     Alert.alert('Sign Out', 'You have been successfully signed out');
     set({ user: null, session: null });
   },
