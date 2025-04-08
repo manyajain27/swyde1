@@ -185,9 +185,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.4,
     shadowRadius: 12,
-    elevation: 15,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.15)',
+    elevation: 15
   },
   imageContainer: {
     width: '100%',
