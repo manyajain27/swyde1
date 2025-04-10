@@ -1,92 +1,109 @@
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, Alert } from 'react-native';
-import { ScaledSheet } from 'react-native-size-matters';
+import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useUserStore } from '@/store/userStore';
-import { useRouter } from 'expo-router';
-
-const generateRoomCode = () => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-};
 
 const FriendsScreen = () => {
+  const { user } = useUserStore();
   const [roomCode, setRoomCode] = useState('');
-  const setLoading = useUserStore(state => state.setLoading);
-  const user = useUserStore(state => state.user);
-  const router = useRouter();
+
+  const generateRoomCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
 
   const createRoom = async () => {
-    const code = generateRoomCode();
-    setLoading(true);
+    if (!user) return;
 
-    const { data, error } = await supabase
-      .from('swipe_rooms')
-      .insert({ code, user1_id: user?.id })
+    const code = generateRoomCode();
+
+    const { data: room, error: roomError } = await supabase
+      .from('rooms')
+      .insert({
+        code,
+        host_id: user.id,
+      })
       .select()
       .single();
 
-    setLoading(false);
-
-    if (error) {
-      Alert.alert('Error', error.message);
+    if (roomError || !room) {
+      console.error('Room creation error:', roomError);
+      Alert.alert("Error", "Couldn't create room");
       return;
     }
 
-    router.push({
-      pathname: '/room/[code]',
-      params: {code},
-    })
+    // Add self to room_members
+    const { error: memberError } = await supabase.from('room_members').insert({
+      room_id: room.id,
+      user_id: user.id,
+    });
+
+    if (memberError) {
+      console.error('Adding self to room_members failed:', memberError);
+    }
+
+    router.push(`/room/${code}`);
   };
 
   const joinRoom = async () => {
-    if (!roomCode) return Alert.alert('Error', 'Enter a room code');
+    if (!user) return;
 
-    setLoading(true);
+    const code = roomCode.trim().toUpperCase();
+    console.log('Fetching room with code:', code);
 
     const { data: room, error } = await supabase
-      .from('swipe_rooms')
-      .update({ user2_id: user?.id, status: 'ready' })
-      .eq('code', roomCode.toUpperCase())
-      .eq('status', 'waiting')
-      .is('user2_id', null)
-      .select()
+      .from('rooms')
+      .select('*')
+      .eq('code', code)
+      .eq('is_active', true)
       .single();
 
-    setLoading(false);
-
     if (error || !room) {
-      Alert.alert('Invalid Code', 'Room not found or already full.');
+      console.error('Error fetching room:', error);
+      Alert.alert('Room not found or inactive');
       return;
     }
 
-    router.push({
-      pathname: '/room/[code]',
-      params: { roomCode },
-    })
+    const { error: joinError } = await supabase
+      .from('room_members')
+      .upsert({
+        room_id: room.id,
+        user_id: user.id,
+      });
+
+    if (joinError) {
+      console.error('Joining room_members error:', joinError);
+      Alert.alert('Failed to join room');
+      return;
+    }
+
+    router.push(`/room/${code}`);
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Swyde with a Friend</Text>
-
-      <TouchableOpacity style={styles.button} onPress={createRoom}>
-        <Text style={styles.buttonText}>Create Room</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.or}>OR</Text>
+      <Text style={styles.title}>Join or Create Room</Text>
 
       <TextInput
-        style={styles.input}
         placeholder="Enter Room Code"
+        placeholderTextColor="#aaa"
+        style={styles.input}
         value={roomCode}
-        onChangeText={setRoomCode}
         autoCapitalize="characters"
-        maxLength={6}
+        onChangeText={setRoomCode}
       />
 
       <TouchableOpacity style={styles.button} onPress={joinRoom}>
         <Text style={styles.buttonText}>Join Room</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.button, { backgroundColor: '#444' }]} onPress={createRoom}>
+        <Text style={styles.buttonText}>Create Room</Text>
       </TouchableOpacity>
     </View>
   );
@@ -94,44 +111,39 @@ const FriendsScreen = () => {
 
 export default FriendsScreen;
 
-const styles = ScaledSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000',
+    padding: 24,
     justifyContent: 'center',
-    paddingHorizontal: '24@s',
-    backgroundColor: '#fff',
   },
   title: {
-    fontSize: '20@ms',
-    fontWeight: 'bold',
+    fontSize: 24,
+    color: '#F5F5DC',
+    marginBottom: 32,
     textAlign: 'center',
-    marginBottom: '30@vs',
+    fontFamily: 'MuseoSansRounded-700',
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: '8@ms',
-    paddingHorizontal: '12@s',
-    paddingVertical: '10@vs',
-    marginBottom: '20@vs',
-    fontSize: '16@ms',
+    backgroundColor: '#111',
+    borderRadius: 10,
+    color: '#fff',
+    padding: 16,
+    fontSize: 16,
+    marginBottom: 16,
+    fontFamily: 'MuseoSansRounded-500',
   },
   button: {
-    backgroundColor: '#000',
-    paddingVertical: '12@vs',
-    borderRadius: '8@ms',
+    backgroundColor: '#222',
+    borderRadius: 10,
+    padding: 16,
+    marginTop: 8,
     alignItems: 'center',
-    marginBottom: '10@vs',
   },
   buttonText: {
-    color: '#fff',
-    fontSize: '16@ms',
-    fontWeight: '600',
-  },
-  or: {
-    textAlign: 'center',
-    marginVertical: '10@vs',
-    fontSize: '14@ms',
-    color: '#888',
+    color: '#F5F5DC',
+    fontSize: 16,
+    fontFamily: 'MuseoSansRounded-600',
   },
 });

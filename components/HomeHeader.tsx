@@ -92,7 +92,8 @@ const [longitude, setLongitude] = useState<number | null>(null);
           <View>
             <Pressable 
             style={styles.locationSubRow} 
-            onPress={() => router.push("/location/LocationScreen")}>
+            // onPress={() => router.push("/location/LocationScreen")}
+            >
                 <Text style={styles.locationMainText}>
                     {nameLocation || "Locating..."}
                 </Text>
