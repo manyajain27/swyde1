@@ -7,6 +7,7 @@ import { useUserStore } from '@/store/userStore';
 const FriendsScreen = () => {
   const { user } = useUserStore();
   const [roomCode, setRoomCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const generateRoomCode = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -18,91 +19,140 @@ const FriendsScreen = () => {
   };
 
   const createRoom = async () => {
-    if (!user) return;
-
-    const code = generateRoomCode();
-
-    const { data: room, error: roomError } = await supabase
-      .from('rooms')
-      .insert({
-        code,
-        host_id: user.id,
-      })
-      .select()
-      .single();
-
-    if (roomError || !room) {
-      console.error('Room creation error:', roomError);
-      Alert.alert("Error", "Couldn't create room");
+    if (!user) {
+      Alert.alert("Error", "You need to be logged in");
       return;
     }
 
-    // Add self to room_members
-    const { error: memberError } = await supabase.from('room_members').insert({
-      room_id: room.id,
-      user_id: user.id,
-    });
-
-    if (memberError) {
-      console.error('Adding self to room_members failed:', memberError);
+    setIsLoading(true);
+    
+    try {
+      const code = generateRoomCode();
+      
+      // Create room
+      const { data: room, error: roomError } = await supabase
+        .from('rooms')
+        .insert({
+          code,
+          host_id: user.id
+        })
+        .select()
+        .single();
+        
+      if (roomError || !room) {
+        console.error("Error creating room:", roomError);
+        Alert.alert("Error", "Failed to create room. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+      
+      // Join the room as the creator
+      const { error: memberError } = await supabase
+        .from('room_members')
+        .insert({
+          room_id: room.id,
+          user_id: user.id
+        });
+        
+      if (memberError) {
+        console.error("Error joining room:", memberError);
+        Alert.alert("Error", "Failed to join the room you created. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+      
+      router.push(`/room/${code}`);
+    } catch (error) {
+      console.error("Exception in room creation:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-
-    router.push(`/room/${code}`);
   };
 
   const joinRoom = async () => {
-    if (!user) return;
-
-    const code = roomCode.trim().toUpperCase();
-    console.log('Fetching room with code:', code);
-
-    const { data: room, error } = await supabase
-      .from('rooms')
-      .select('*')
-      .eq('code', code)
-      .eq('is_active', true)
-      .single();
-
-    if (error || !room) {
-      console.error('Error fetching room:', error);
-      Alert.alert('Room not found or inactive');
+    if (!user) {
+      Alert.alert("Error", "You need to be logged in");
       return;
     }
-
-    const { error: joinError } = await supabase
-      .from('room_members')
-      .upsert({
-        room_id: room.id,
-        user_id: user.id,
-      });
-
-    if (joinError) {
-      console.error('Joining room_members error:', joinError);
-      Alert.alert('Failed to join room');
+    
+    if (!roomCode.trim()) {
+      Alert.alert("Error", "Please enter a room code");
       return;
     }
-
-    router.push(`/room/${code}`);
+    
+    setIsLoading(true);
+    
+    try {
+      const code = roomCode.trim().toUpperCase();
+      
+      // Find the room
+      const { data: room, error: roomError } = await supabase
+        .from('rooms')
+        .select('id')
+        .eq('code', code)
+        .eq('is_active', true)
+        .single();
+        
+      if (roomError || !room) {
+        console.error("Error finding room:", roomError);
+        Alert.alert("Error", "Room not found or no longer active");
+        setIsLoading(false);
+        return;
+      }
+      
+      // Join the room
+      const { error: memberError } = await supabase
+        .from('room_members')
+        .upsert({
+          room_id: room.id,
+          user_id: user.id,
+          is_ready: false
+        });
+        
+      if (memberError) {
+        console.error("Error joining room:", memberError);
+        Alert.alert("Error", "Failed to join the room. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+      
+      router.push(`/room/${code}`);
+    } catch (error) {
+      console.error("Exception in room joining:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Join or Create Room</Text>
-
+      
       <TextInput
         placeholder="Enter Room Code"
         placeholderTextColor="#aaa"
         style={styles.input}
         value={roomCode}
-        autoCapitalize="characters"
         onChangeText={setRoomCode}
+        autoCapitalize="characters"
+        editable={!isLoading}
       />
-
-      <TouchableOpacity style={styles.button} onPress={joinRoom}>
+      
+      <TouchableOpacity 
+        style={[styles.button, isLoading && styles.disabledButton]} 
+        onPress={joinRoom}
+        disabled={isLoading}
+      >
         <Text style={styles.buttonText}>Join Room</Text>
       </TouchableOpacity>
-
-      <TouchableOpacity style={[styles.button, { backgroundColor: '#444' }]} onPress={createRoom}>
+      
+      <TouchableOpacity 
+        style={[styles.button, { backgroundColor: '#444' }, isLoading && styles.disabledButton]} 
+        onPress={createRoom}
+        disabled={isLoading}
+      >
         <Text style={styles.buttonText}>Create Room</Text>
       </TouchableOpacity>
     </View>
@@ -146,4 +196,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'MuseoSansRounded-600',
   },
+  disabledButton: {
+    opacity: 0.5,
+  }
 });
