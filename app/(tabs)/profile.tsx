@@ -26,7 +26,7 @@ const ProfileScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+      <StatusBar  style='light'/>
       {/* Loading Overlay */}
       <LoadingOverlay visible={isLoading} mainText="Sad to see you go ☹️" subText='Signing you out..' />
 
@@ -46,7 +46,7 @@ const ProfileScreen = () => {
       
       <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
         <Text style={styles.signOutText}>Sign Out</Text>
-        <Ionicons name="log-out-outline" size={20} color="#5956E9" />
+        <Ionicons name="log-out-outline" size={20} color="tomato" />
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -55,7 +55,7 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#171717',
   },
   header: {
     paddingHorizontal: s(24),
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: ms(22),
     fontWeight: 'bold',
-    color: '#212121',
+    color: '#F5F5DC',
   },
   userInfo: {
     flexDirection: 'row',
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     width: ms(60),
     height: ms(60),
     borderRadius: ms(30),
-    backgroundColor: '#5956E9',
+    backgroundColor: 'tomato',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -86,11 +86,11 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: ms(18),
     fontWeight: 'bold',
-    color: '#212121',
+    color: '#F5F5DC',
   },
   userEmail: {
     fontSize: ms(14),
-    color: '#757575',
+    color: '#999',
     marginTop: vs(4),
   },
   signOutButton: {
@@ -102,12 +102,12 @@ const styles = StyleSheet.create({
     paddingVertical: vs(12),
     borderRadius: ms(10),
     borderWidth: 1,
-    borderColor: '#5956E9',
+    borderColor: 'tomato',
   },
   signOutText: {
     fontSize: ms(16),
     fontWeight: '500',
-    color: '#5956E9',
+    color: 'tomato',
     marginRight: s(8),
   },
 });

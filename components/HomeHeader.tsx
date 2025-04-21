@@ -111,7 +111,7 @@ const [longitude, setLongitude] = useState<number | null>(null);
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#000000",
+    backgroundColor: "transparent",
     // paddingTop: 50,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 30,

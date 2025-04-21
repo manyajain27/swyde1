@@ -25,7 +25,7 @@ const TabsLayout = () => {
       tabBarActiveTintColor: '#F5F5DC', 
       tabBarInactiveTintColor: '#F5F5DC',
       tabBarStyle: {
-        backgroundColor: '#000',
+        backgroundColor: '#171717',
         borderTopWidth: 0,
         height: Platform.OS === 'ios' ? 83 : 66
       },
@@ -41,7 +41,8 @@ const TabsLayout = () => {
             title: "Home",
             tabBarIcon: ({ focused, color, size }) => (
               <Ionicons name={focused ? "home" : "home-outline"} size={size} color={color} />
-            )
+            ),
+            
           }} />
         <Tabs.Screen name="explore"
         options={{

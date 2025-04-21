@@ -34,7 +34,7 @@ const Categories: React.FC<CategoryProps> = ({ onCategorySelect }) => {
   }, [onCategorySelect]);
 
   const renderIcon = (category: { id: string, icon: string, type: string }, isSelected: boolean) => {
-    const color = isSelected ? '#FFFFFF' : getCategoryColor(category.id);
+    const color = isSelected ? '#F5F5DC' : getCategoryColor(category.id);
     const size = 24;
 
     switch (category.type) {
@@ -71,14 +71,13 @@ const Categories: React.FC<CategoryProps> = ({ onCategorySelect }) => {
       >
         {categories.map((category) => {
           const isSelected = selectedCategory === category.id;
-          const backgroundColor = isSelected ? getCategoryColor(category.id) : 'none';
           
           return (
             <TouchableOpacity
               key={category.id}
               style={[
                 styles.categoryItem,
-                { backgroundColor }
+                isSelected && styles.selectedItem
               ]}
               activeOpacity={0.7}
               onPress={() => handleCategoryPress(category.id)}
@@ -92,6 +91,14 @@ const Categories: React.FC<CategoryProps> = ({ onCategorySelect }) => {
               ]}>
                 {category.name}
               </Text>
+              
+              {isSelected && (
+                <Ionicons
+                  name="caret-up-outline"
+
+                  size={16}
+                  color="#F5F5DC"/>
+              )}
             </TouchableOpacity>
           );
         })}
@@ -117,8 +124,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 8,
-    borderRightWidth: 0.5,
-    borderRightColor: 'rgba(255, 255, 255, 0.2)',
+    position: 'relative',
+  },
+  selectedItem: {
+    shadowColor: '#F5F5DC',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
   iconContainer: {
     marginBottom: 6,
@@ -128,8 +141,9 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#FFFFFF',
+    color: '#F5F5DC',
     textAlign: 'center',
+    marginBottom: 2,
   },
   selectedCategoryText: {
     fontWeight: '700',

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useUserStore } from '@/store/userStore';
+import { StatusBar } from 'expo-status-bar';
 
 const FriendsScreen = () => {
   const { user } = useUserStore();
@@ -128,6 +129,7 @@ const FriendsScreen = () => {
 
   return (
     <View style={styles.container}>
+      <StatusBar style="light"/>
       <Text style={styles.title}>Join or Create Room</Text>
       
       <TextInput
@@ -164,7 +166,7 @@ export default FriendsScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#171717',
     padding: 24,
     justifyContent: 'center',
   },
